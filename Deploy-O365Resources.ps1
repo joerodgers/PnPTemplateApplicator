@@ -8,8 +8,10 @@ $thumbprint = $env:O365_THUMBPRINT
 $tenantId   = $env:O365_TENANTID
 $tenant     = $env:O365_TENANT
 
+# you will see this as output in the Deploy-AzureResources.ps1 script or pull directly from the Logic App's trigger action.
 $powerAutomateOrLogicAppTriggerUrl = "https://prod-56.eastus.logic.azure.com:443/workflows/e761dc8bd8314b0492584547119c60bf/triggers/manual/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=olk-9EBHy4sx_a10VFfUhZhhVPSE2oTcPijOLc4mp_w"
 
+# manually upload these files and update the paths below
 $landingThumbnailImageUrl     = "https://$tenant.sharepoint.com/SiteAssets/thumbnail-thelanding.jpg"
 $landingPreviewImageUrl       = "https://$tenant.sharepoint.com/SiteAssets/card-thelanding.jpg"
 

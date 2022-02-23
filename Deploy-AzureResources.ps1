@@ -1,4 +1,4 @@
-﻿#requires -modules "Az"
+﻿#requires -modules "Az.Resources", "Az.Accounts"
 
 [System.Net.WebRequest]::DefaultWebProxy.Credentials = [System.Net.CredentialCache]::DefaultCredentials 
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls11 -bor [System.Net.SecurityProtocolType]::Tls12   
