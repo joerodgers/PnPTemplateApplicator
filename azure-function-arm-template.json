@@ -1,0 +1,418 @@
+﻿{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "tenantId": {
+            "type": "string",
+            "metadata": {
+                "description": "Tenant Id"
+            }
+        },
+        "clientId": {
+            "type": "string",
+            "metadata": {
+                "description": "Client/Application Id"
+            }
+        },
+        "certificateThumbprint": {
+            "type": "string",
+            "metadata": {
+                "description": "Certificate Thumbprint"
+            }
+        },
+        "certificatePfxPassword": {
+            "type": "string",
+            "metadata": {
+                "description": "Certificate Password"
+            }
+        },
+        "certificatePfxBase64": {
+            "type": "string",
+            "metadata": {
+                "description": "Base 64 encoded certificate file"
+            }
+        },
+        "applicationName": {
+            "type": "string",
+            "defaultValue": "[format('application-{0}', uniqueString(resourceGroup().id))]",
+            "metadata": {
+                "description": "Name of the application"
+            }
+        },
+        "functionAppName": {
+            "type": "string",
+            "defaultValue": "[format('function-{0}', uniqueString(resourceGroup().id))]",
+            "metadata": {
+                "description": "Name of the application"
+            }
+        },
+        "functionName": {
+            "type": "string",
+            "defaultValue": "function-ApplyTemplateToSiteCollection",
+            "metadata": {
+                "description": "Name of the application"
+            }
+        },
+        "logicAppName": {
+            "type": "string",
+            "defaultValue": "[format('logic-{0}', uniqueString(resourceGroup().id))]",
+            "metadata": {
+                "description": "description"
+            }
+        },
+        "storageAccountName": {
+            "type": "string",
+            "defaultValue": "[format('storageacct{0}', uniqueString(resourceGroup().id))]",
+            "metadata": {
+                "description": "Name of the storage account"
+            }
+        },
+        "functionCode": {
+            "type": "string",
+            "defaultValue": "param($QueueItem, $TriggerMetadata)",
+            "metadata": {
+                "description": "PowerShell code for the Azure Queue trigger function"
+            }
+        }
+    },
+    "functions": [
+    ],
+    "variables": {
+        "queueName": "ps-queue-items",
+        "apiConnectionName": "[concat('apiconnection-', parameters('storageAccountName'))]"
+    },
+    "resources": [
+        {
+            "type": "Microsoft.Storage/storageAccounts",
+            "name": "[parameters('storageAccountName')]",
+            "apiVersion": "2021-04-01",
+            "location": "[resourceGroup().location]",
+            "kind": "StorageV2",
+            "sku": {
+                "name": "Standard_LRS",
+                "tier": "Standard"
+            }
+        },
+        {
+            "type": "Microsoft.Storage/storageAccounts/queueServices",
+            "apiVersion": "2021-06-01",
+            "name": "[concat(parameters('storageAccountName'), '/default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+            ],
+            "properties": {
+                "metadata": {}
+            }
+        },
+        {
+            "type": "Microsoft.Storage/storageAccounts/queueServices/queues",
+            "apiVersion": "2021-08-01",
+            "name": "[concat(parameters('storageAccountName'), '/default/', variables('queueName'))]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/queueServices', parameters('storageAccountName'), 'default')]",
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+            ],
+            "properties": {
+                "metadata": {}
+            }
+        },
+        {
+            "type": "Microsoft.Storage/storageAccounts/queueServices/queues",
+            "apiVersion": "2021-08-01",
+            "name": "[concat(parameters('storageAccountName'), '/default/', variables('queueName'), '-poison')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/queueServices', parameters('storageAccountName'), 'default')]",
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+            ],
+            "properties": {
+                "metadata": {}
+            }
+        },
+        {
+            "type": "Microsoft.Web/serverfarms",
+            "name": "[parameters('applicationName')]",
+            "apiVersion": "2020-12-01",
+            "location": "[resourceGroup().location]",
+            "sku": {
+                "name": "Y1",
+                "capacity": 1
+            },
+            "properties": {
+                "name": "[parameters('applicationName')]"
+            }
+        },
+        {
+            "name": "[parameters('functionAppName')]",
+            "type": "Microsoft.Web/sites",
+            "apiVersion": "2020-12-01",
+            "location": "[resourceGroup().location]",
+            "kind": "functionapp",
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', parameters('applicationName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+            ],
+            "properties": {
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', parameters('applicationName'))]",
+                "siteConfig": {
+                    "appSettings": [
+                        {
+                            "name": "AzureWebJobsStorage",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', parameters('storageAccountName'), ';EndpointSuffix=', environment().suffixes.storage, ';AccountKey=', listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2019-06-01').keys[0].value)]"
+                        },
+                        {
+                            "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', parameters('storageAccountName'), ';EndpointSuffix=', environment().suffixes.storage, ';AccountKey=', listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2019-06-01').keys[0].value)]"
+                        },
+                        {
+                            "name": "WEBSITE_CONTENTSHARE",
+                            "value": "[toLower(parameters('functionAppName'))]"
+                        },
+                        {
+                            "name": "FUNCTIONS_EXTENSION_VERSION",
+                            "value": "~4"
+                        },
+                        {
+                            "name": "FUNCTIONS_WORKER_RUNTIME",
+                            "value": "powershell"
+                        },
+                        {
+                            "name": "SPO_CLIENTID",
+                            "value": "[parameters('clientId')]"
+                        },
+                        {
+                            "name": "SPO_TENANTID",
+                            "value": "[parameters('tenantId')]"
+                        },
+                        {
+                            "name": "SPO_THUMBPRINT",
+                            "value": "[parameters('certificateThumbprint')]"
+                        },
+                        {
+                            "name": "WEBSITE_LOAD_CERTIFICATES",
+                            "value": "*"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Web/sites/functions",
+            "apiVersion": "2020-12-01",
+            "name": "[format('{0}/{1}', parameters('functionAppName'), parameters('functionName'))]",
+            "properties": {
+                "name": "[parameters('functionName')]",
+                "config": {
+                    "disabled": false,
+                    "bindings": [
+                        {
+                            "name": "QueueItem",
+                            "type": "queueTrigger",
+                            "direction": "in",
+                            "queueName": "[variables('queueName')]",
+                            "connection": "AzureWebJobsStorage"
+                        }
+                    ]
+                },
+                "files": {
+                    "run.ps1" : "[parameters('functionCode')]"
+                },
+                "language": "powershell"
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', parameters('functionAppName'))]"
+            ]
+        },
+        {
+            "name": "[parameters('certificateThumbprint')]",
+            "type": "Microsoft.Web/certificates",
+            "apiVersion": "2015-08-01",
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', parameters('applicationName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+            ],
+            "location": "[resourceGroup().location]",
+            "properties": {
+                "pfxBlob": "[parameters('certificatePfxBase64')]",
+                "password": "[parameters('certificatePfxPassword')]",
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', parameters('applicationName'))]"
+            }
+        },
+        {
+            "name": "[variables('apiConnectionName')]",
+            "type": "Microsoft.Web/connections",
+            "apiVersion": "2016-06-01",
+            "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+            ],
+            "location": "[resourceGroup().location]",
+            "kind": "V1",
+            "properties": {
+                "displayName": "[variables('apiConnectionName')]",
+                "statuses": [
+                    {
+                        "status": "Connected"
+                    }
+                ],
+                "customParameterValues": {},
+                "api": {
+                    "name": "[variables('apiConnectionName')]",
+                    "displayName": "Azure Queues",
+                    "description": "Azure Queue storage provides cloud messaging between application components. Queue storage also supports managing asynchronous tasks and building process work flows.",
+                    "iconUri": "https://connectoricons-prod.azureedge.net/releases/v1.0.1546/1.0.1546.2665/azurequeues/icon.png",
+                    "brandColor": "#0072C6",
+                    "id": "[concat('subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', resourceGroup().location, '/managedApis/azurequeues')]",
+                    "type": "Microsoft.Web/locations/managedApis"
+                },
+                "parameterValues": {
+                    "storageaccount": "[parameters('storageAccountName')]",
+                    "sharedkey": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2019-06-01').keys[0].value]"
+                },
+                "testLinks": [
+                    {
+                        "requestUri": "[concat('https://management.azure.com:443/subscriptions/', subscription().subscriptionId, '/resourceGroups/', resourceGroup().name, '/providers/Microsoft.Web/connections/', variables('apiConnectionName'), '/extensions/proxy/testConnection?api-version=2016-06-01')]",
+                        "method": "get"
+                    }
+                ]
+            }
+        },
+        {
+            "name": "[parameters('logicAppName')]",
+            "type": "Microsoft.Logic/workflows",
+            "apiVersion": "2017-07-01",
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/connections', variables('apiConnectionName'))]"
+            ],
+            "location": "[resourceGroup().location]",
+            "properties": {
+                "definition": {
+                    "$schema": "https://schema.management.azure.com/schemas/2016-06-01/Microsoft.Logic.json",
+                    "contentVersion": "1.0.0.0",
+                    "parameters": {
+                        "$connections": {
+                            "defaultValue": {},
+                            "type": "Object"
+                        }
+                    },
+                    "triggers": {
+                        "manual": {
+                            "type": "Request",
+                            "kind": "Http",
+                            "inputs": {
+                                "schema": {
+                                    "properties": {
+                                        "createdTimeUTC": {
+                                            "type": "string"
+                                        },
+                                        "creatorEmail": {
+                                            "type": "string"
+                                        },
+                                        "creatorName": {
+                                            "type": "string"
+                                        },
+                                        "properties": {
+                                            "properties": {
+                                                "force": {
+                                                    "type": "boolean"
+                                                },
+                                                "template": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "type": "object"
+                                        },
+                                        "webDescription": {
+                                            "type": "string"
+                                        },
+                                        "webUrl": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "actions": {
+                        "Initialize_-_Azure_Queue_Message": {
+                            "runAfter": {},
+                            "type": "InitializeVariable",
+                            "inputs": {
+                                "variables": [
+                                    {
+                                        "name": "Azure Queue Message",
+                                        "type": "string",
+                                        "value": "{\n    \"SiteCollectionUrl\" : \"@{triggerBody()?['webUrl']}\",\n    \"Template\" : \"@{triggerBody()?['properties']?['template']}\",\n    \"Force\" : @{toLower(string(triggerBody()?['properties']?['force']))}\n}"
+                                    }
+                                ]
+                            }
+                        },
+                        "Put_a_message_on_a_queue_(V2)": {
+                            "runAfter": {
+                                "Initialize_-_Azure_Queue_Message": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "ApiConnection",
+                            "inputs": {
+                                "body": "@variables('Azure Queue Message')",
+                                "host": {
+                                    "connection": {
+                                        "name": "@parameters('$connections')['azurequeues']['connectionId']"
+                                    }
+                                },
+                                "method": "post",
+                                "path": "/v2/storageAccounts/@{encodeURIComponent(encodeURIComponent('AccountNameFromSettings'))}/queues/@{encodeURIComponent('ps-queue-items')}/messages"
+                            }
+                        }
+                    },
+                    "outputs": {}
+                },
+                "parameters": {
+                    "$connections": {
+                        "value": {
+                            "azurequeues": {
+                                "connectionId": "[resourceId('Microsoft.Web/connections', variables('apiConnectionName'))]",
+                                "connectionName": "azurequeues",
+                                "id": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/centralus/managedApis/azurequeues')]"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    ],
+    "outputs": {
+        "functionAppName": {
+            "type": "string",
+            "value": "[parameters('functionAppName')]"
+        },
+        "functionName": {
+            "type": "string",
+            "value": "[parameters('functionName')]"
+        },
+        "applicationName": {
+            "type": "string",
+            "value": "[parameters('applicationName')]"
+        },
+        "storageAccountName": {
+            "type": "string",
+            "value": "[parameters('storageAccountName')]"
+        },
+        "tenantId": {
+            "type": "string",
+            "value": "[parameters('tenantId')]"
+        },
+        "clientId": {
+            "type": "string",
+            "value": "[parameters('clientId')]"
+        },
+        "thumbprint": {
+            "type": "string",
+            "value": "[parameters('certificateThumbprint')]"
+        },
+        "LogicAppUri": {
+            "type": "string",
+            "value": "[listCallbackURL(resourceId('Microsoft.Logic/workflows/triggers', parameters('logicAppName'), 'manual'), '2019-05-01').value]"
+        }
+    }
+}
