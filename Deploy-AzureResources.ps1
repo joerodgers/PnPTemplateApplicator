@@ -1,20 +1,19 @@
-﻿
+﻿#requires -modules "Az"
+
 [System.Net.WebRequest]::DefaultWebProxy.Credentials = [System.Net.CredentialCache]::DefaultCredentials 
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls11 -bor [System.Net.SecurityProtocolType]::Tls12   
 
-# Login-AzAccount -UseDeviceAuthentication
-
-Select-AzSubscription -Subscription "d432671f-fd2d-449f-afdf-010ba093eace" -WarningAction SilentlyContinue
+Login-AzAccount -UseDeviceAuthentication
 
 $clientId            = $env:O365_CLIENTID
 $thumbprint          = $env:O365_THUMBPRINT
 $tenantId            = $env:O365_TENANTID
-$certificatePath     = "$PSScriptRoot\AADAppPrincipalCertificate.pfx"
+$certificatePath     = "$PSScriptRoot\function\certificate.pfx"
 $certificatePassword = 'pass@word1'
-$templatePath        = "$PSScriptRoot\azure-function-arm-template.json"
-$functionCodePath    = "$PSScriptRoot\function.ps1"
+$templatePath        = "$PSScriptRoot\function\azure-function-arm-template.json"
+$functionCodePath    = "$PSScriptRoot\function\function.ps1"
 $resourceGroupName   = "RG-SPOTEMPLATEAPPLICATOR-NPROD-USEAST"
-$templateZipPath     = "$PSScriptRoot\templates.zip"
+$templateZipPath     = "$PSScriptRoot\function\templates.zip"
 $subscriptionId      = "d432671f-fd2d-449f-afdf-010ba093eace"
 
 Select-AzSubscription -Subscription $subscriptionId -WarningAction SilentlyContinue
