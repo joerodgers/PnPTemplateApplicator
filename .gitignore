@@ -1,0 +1,6 @@
+﻿
+# ignore the settings folder and files for VSCode and PSS
+.vscode/*
+
+# ignore the certificates
+*.pfx
