@@ -214,7 +214,7 @@
                     ]
                 },
                 "files": {
-                    "run.ps1" : "[parameters('functionCode')]"
+                    "run.ps1": "[parameters('functionCode')]"
                 },
                 "language": "powershell"
             },
@@ -299,35 +299,47 @@
                             "kind": "Http",
                             "inputs": {
                                 "schema": {
+                                    "type": "object",
                                     "properties": {
-                                        "createdTimeUTC": {
+                                        "parameters": {
+                                            "type": "object",
+                                            "properties": {
+                                                "event": {
+                                                    "type": "string"
+                                                },
+                                                "product": {
+                                                    "type": "string"
+                                                },
+                                                "template": {
+                                                    "type": "string"
+                                                },
+                                                "force": {
+                                                    "type": "boolean"
+                                                }
+                                            }
+                                        },
+                                        "webUrl": {
                                             "type": "string"
                                         },
-                                        "creatorEmail": {
+                                        "webTitle": {
+                                            "type": "string"
+                                        },
+                                        "webDescription": {
                                             "type": "string"
                                         },
                                         "creatorName": {
                                             "type": "string"
                                         },
-                                        "properties": {
-                                            "properties": {
-                                                "force": {
-                                                    "type": "boolean"
-                                                },
-                                                "template": {
-                                                    "type": "string"
-                                                }
-                                            },
-                                            "type": "object"
-                                        },
-                                        "webDescription": {
+                                        "creatorEmail": {
                                             "type": "string"
                                         },
-                                        "webUrl": {
+                                        "createdTimeUTC": {
+                                            "type": "string"
+                                        },
+                                        "groupId": {
                                             "type": "string"
                                         }
-                                    },
-                                    "type": "object"
+                                    }
                                 }
                             }
                         }
@@ -341,7 +353,7 @@
                                     {
                                         "name": "Azure Queue Message",
                                         "type": "string",
-                                        "value": "{\n    \"SiteCollectionUrl\" : \"@{triggerBody()?['webUrl']}\",\n    \"Template\" : \"@{triggerBody()?['properties']?['template']}\",\n    \"Force\" : @{toLower(string(triggerBody()?['properties']?['force']))}\n}"
+                                        "value": "{\n    \"SiteCollectionUrl\" : \"@{triggerBody()?['webUrl']}\",\n    \"Template\" : \"@{triggerBody()?['parameters']?['template']}\",\n    \"Force\" : @{toLower(string(triggerBody()?['parameters']?['force']))}\n}"
                                     }
                                 ]
                             }
