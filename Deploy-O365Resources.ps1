@@ -41,7 +41,8 @@ $perspectivePreviewImageUrl   = "https://$tenant.sharepoint.com/SiteAssets/card-
         "parameters" : {{
             "event"    : "site creation",
             "product"  : "SharePoint Online",
-            "template" : "{1}"
+            "template" : "{1}",
+            "force"    : false
         }}
         }}
     ]
