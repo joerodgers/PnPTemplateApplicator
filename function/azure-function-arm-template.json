@@ -91,6 +91,18 @@
             "sku": {
                 "name": "Standard_LRS",
                 "tier": "Standard"
+            },
+            "properties": {
+                "minimumTlsVersion" : "TLS1_2",
+                "allowBlobPublicAccess" : false,
+                "networkAcls": {
+                    "resourceAccessRules" : [],
+                    "bypass" : "AzureServices",
+                    "virtualNetworkRules": [],
+                    "ipRules": [],
+                    "defaultAction": "Deny"
+                },
+                "supportsHttpsTrafficOnly": true
             }
         },
         {
